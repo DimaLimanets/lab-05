@@ -15,8 +15,9 @@ import java.util.Objects;
 
 public class CityDialogFragment extends DialogFragment {
     interface CityDialogListener {
-        void updateCity(City city, String title, String year);
+        void updateCity(City city, String oldName, String newName, String newProvince);
         void addCity(City city);
+        void deleteCity(City city);
     }
     private CityDialogListener listener;
 
@@ -50,30 +51,49 @@ public class CityDialogFragment extends DialogFragment {
         String tag = getTag();
         Bundle bundle = getArguments();
         City city;
-
-        if (Objects.equals(tag, "City Details") && bundle != null){
+        //If editing city, set text
+        if (Objects.equals(tag, "City Details") && bundle != null) {
             city = (City) bundle.getSerializable("City");
             assert city != null;
             editMovieName.setText(city.getName());
             editMovieYear.setText(city.getProvince());
+        } else {
+            //otherwise add
+            city = null;
         }
-        else {
-            city = null;}
+        City finalCity = city;
 
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-        return builder
-                .setView(view)
-                .setTitle("City Details")
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("Continue", (dialog, which) -> {
-                    String title = editMovieName.getText().toString();
-                    String year = editMovieYear.getText().toString();
-                    if (Objects.equals(tag, "City Details")) {
-                        listener.updateCity(city, title, year);
-                    } else {
+
+        if (Objects.equals(tag, "City Details")) {
+            return builder
+                    .setView(view)
+                    .setTitle("City Details")
+                    .setNegativeButton("Cancel", null)
+                    //Delete removes city from FireStore
+                    .setNeutralButton("Delete", (dialog, which) -> {
+                        listener.deleteCity(finalCity);
+                    })
+                    //Update saves changed to FireStore
+                    .setPositiveButton("Update", (dialog, which) -> {
+                        String oldName = finalCity.getName();
+                        String newName = editMovieName.getText().toString();
+                        String newProvince = editMovieYear.getText().toString();
+                        listener.updateCity(finalCity, oldName, newName, newProvince);
+                    })
+                    .create();
+        } else {
+            // Adding new city
+            return builder
+                    .setView(view)
+                    .setTitle("Add City")
+                    .setNegativeButton("Cancel", null)
+                    .setPositiveButton("Add", (dialog, which) -> {
+                        String title = editMovieName.getText().toString();
+                        String year = editMovieYear.getText().toString();
                         listener.addCity(new City(title, year));
-                    }
-                })
-                .create();
+                    })
+                    .create();
+        }
     }
 }
